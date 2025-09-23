@@ -5,18 +5,19 @@ namespace App\Http\Controllers\Api;
 use Exception;
 use App\Models\User;
 use App\Models\Image;
+use Endroid\QrCode\QrCode;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Hash;
+use Endroid\QrCode\Encoding\Encoding;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
+use Endroid\QrCode\ErrorCorrectionLevel;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class AuthController extends Controller
 {
@@ -35,6 +36,89 @@ class AuthController extends Controller
             ],404);
         }
     }
+    
+    public function updateUser(Request $request, $id)
+    {
+        try {
+            $authUser = auth()->user();
+
+            // Hanya boleh edit dirinya sendiri
+            if ($authUser->id != $id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk mengubah user ini.'
+                ], 403);
+            }
+
+            // Cari user
+            $user = User::findOrFail($id);
+
+            // Ambil rules untuk edit
+            $rules = User::getValidationRules('edit');
+
+            // Ubah semua "required" jadi "sometimes"
+            foreach ($rules as $field => $rule) {
+                $rules[$field] = str_replace('required', 'sometimes', $rule);
+            }
+
+            // Kalau password kosong, hapus rule password
+            if (!$request->filled('password')) {
+                unset($rules['password']);
+            }
+
+            $validator = Validator::make($request->all(), $rules);
+
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+
+            // Ambil data request
+            $data = $request->only(User::getAllowedFields('edit'));
+
+            // Isi dengan nilai lama jika tidak dikirim
+            foreach (User::getAllowedFields('edit') as $field) {
+                if (!array_key_exists($field, $data) || is_null($data[$field])) {
+                    $data[$field] = $user->$field;
+                }
+            }
+
+            // Kalau ada password → hash
+            if (!empty($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            } else {
+                unset($data['password']);
+            }
+
+            // Update user
+            $user->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User berhasil diperbarui.',
+                'data' => $user
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan.',
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan server.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
     public function register(Request $request)
     {
         try {
@@ -52,7 +136,7 @@ class AuthController extends Controller
             $user = User::create($data);
 
             /// 2. Tentukan data untuk QR code
-            $qrCodeData = url('/api/users/'.$user->id); // atau pakai url('/api/users/'.$user->id)
+            $qrCodeData = url('/api/scan/'.$user->id); 
             $fileName = 'user_' . $user->id . '.png';
             $filePath = 'qrcodes/' . $fileName;
 
@@ -77,7 +161,7 @@ class AuthController extends Controller
             $user->save();
 
             // Tambahkan URL akses langsung
-            $user->qrcode_url = Storage::url($filePath);
+            $user->qrcode_url = config('app.url') . Storage::url($filePath);
 
             return response()->json([
                 'success' => true,

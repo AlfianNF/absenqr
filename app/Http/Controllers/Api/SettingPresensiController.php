@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use Exception;
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Presensi;
 use Illuminate\Http\Request;
@@ -97,8 +98,6 @@ class SettingPresensiController extends Controller
                     'id_setting' => $setting->id,
                     'jam_masuk' => $data['jam_absen'],
                     'jam_keluar' => null,
-                    'latitude' => '0',
-                    'longitude' => '0',
                     'status' => 'alfa',
                 ]);
             }
@@ -243,4 +242,80 @@ class SettingPresensiController extends Controller
             ], 500);
         }
     }
+
+    public function scan(Request $request, $qrcode)
+    {
+        try {
+            $user = User::find($qrcode);
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak ditemukan.',
+                ], 404);
+            }
+
+            // cari setting presensi untuk hari ini
+            $today = Carbon::now()->toDateString();
+            $setting = SettingPresensi::where('hari', $today)->first();
+
+            if (!$setting) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada jadwal presensi untuk hari ini.',
+                ], 400);
+            }
+
+            $now = Carbon::now();
+
+            // cek apakah sudah pernah presensi
+            $presensi = Presensi::where('id_user', $user->id)
+                ->where('id_setting', $setting->id)
+                ->first();
+
+            if (!$presensi) {
+                // absen masuk
+                $status = $now->lte(Carbon::parse($setting->jam_absen))
+                    ? 'tepat waktu'
+                    : 'terlambat';
+
+                $presensi = Presensi::create([
+                    'id_user'   => $user->id,
+                    'id_setting'=> $setting->id,
+                    'jam_masuk' => $now->format('H:i:s'),
+                    'status'    => $status,
+                ]);
+
+                $message = "Absen masuk berhasil dicatat.";
+            } else {
+                // absen pulang
+                if ($presensi->jam_keluar) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User sudah absen pulang.',
+                    ], 400);
+                }
+
+                $presensi->update([
+                    'jam_keluar' => $now->format('H:i:s'),
+                ]);
+
+                $message = "Absen pulang berhasil dicatat.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $presensi,
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan server.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

@@ -18,11 +18,11 @@ class Presensi extends Model
         'status'=> 'nullable',
     ];
 
-    protected static $is_add = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar', 'latitude','longitude','status'];
+    protected static $is_add = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar','status'];
     protected static $is_edit = ['jam_masuk', 'jam_keluar','status'];
-    protected static $is_delete = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar', 'latitude','longitude','status'];
-    protected static $is_filter = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar', 'latitude','longitude','status'];
-    protected static $is_search = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar', 'latitude','longitude','status'];
+    protected static $is_delete = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar','status'];
+    protected static $is_filter = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar','status'];
+    protected static $is_search = ['id_setting', 'id_user', 'jam_masuk', 'jam_keluar','status'];
 
 
     public static function getAllowedFields($type)
