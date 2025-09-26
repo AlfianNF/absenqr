@@ -211,7 +211,7 @@ class PresensiController extends Controller
                 ], 404);
             }
 
-            if ($presensi->userPresensi->id_user !== Auth::id()) {
+            if ($presensi->userPresensi->id !== Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Anda tidak memiliki izin untuk mengubah data ini.',
@@ -291,12 +291,15 @@ class PresensiController extends Controller
             $userId = auth()->id();
             $timezone = Config::get('app.timezone');
 
+            // Ambil bulan dan tahun dari request, atau gunakan waktu saat ini sebagai default
             $month = $request->input('month', now($timezone)->month);
             $year = $request->input('year', now($timezone)->year);
 
+            // Tentukan awal dan akhir bulan
             $startOfMonth = Carbon::createFromDate($year, $month, 1, $timezone)->startOfMonth();
             $endOfMonth = $startOfMonth->copy()->endOfMonth();
 
+            // Buat daftar minggu dalam sebulan (Senin - Minggu)
             $weeks = [];
             $current = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
             while ($current <= $endOfMonth) {
@@ -307,6 +310,7 @@ class PresensiController extends Controller
                 $current->addWeek();
             }
 
+            // Tentukan indeks minggu saat ini
             $now = Carbon::now($timezone);
             $currentWeekIndex = null;
             foreach ($weeks as $index => $week) {
@@ -316,8 +320,10 @@ class PresensiController extends Controller
                 }
             }
 
+            // Ambil nomor minggu dari request, atau gunakan minggu saat ini sebagai default
             $weekNumber = $request->input('week', $currentWeekIndex !== null ? $currentWeekIndex + 1 : 1);
 
+            // Validasi nomor minggu
             if (!isset($weeks[$weekNumber - 1])) {
                 return response()->json([
                     'success' => false,
@@ -325,9 +331,12 @@ class PresensiController extends Controller
                 ], 400);
             }
 
+            // Ambil rentang tanggal untuk minggu yang dipilih
             $range = $weeks[$weekNumber - 1];
 
-            $presensi = Presensi::where('id_user', $userId)
+            // Ambil data presensi DENGAN data setting terkait menggunakan with('presensiSetting')
+            $presensi = Presensi::with('presensiSetting') // Diubah sesuai nama relasi
+                ->where('id_user', $userId)
                 ->whereDate('created_at', '>=', $range['start'])
                 ->whereDate('created_at', '<=', $range['end'])
                 ->orderBy('created_at', 'ASC')
@@ -338,7 +347,7 @@ class PresensiController extends Controller
                 'week' => [
                     'start' => $range['start']->toDateString(),
                     'end' => $range['end']->toDateString(),
-                    'number' => $weekNumber
+                    'number' => (int)$weekNumber
                 ],
                 'data' => $presensi
             ]);

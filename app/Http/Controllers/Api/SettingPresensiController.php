@@ -267,7 +267,7 @@ class SettingPresensiController extends Controller
                 ], 400);
             }
 
-            $presensi = Presensi::where('id_user', $user->id)
+            $presensi = Presensi::where('id_user', $qrcode)
                 ->where('id_setting', $setting->id)
                 ->first();
 
