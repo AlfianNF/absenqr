@@ -8,6 +8,7 @@ use App\Models\Presensi;
 use Illuminate\Http\Request;
 use App\Models\SettingPresensi;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
@@ -17,7 +18,7 @@ class PresensiController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('is_admin')->only(['store', 'update', 'destroy']);    
+        $this->middleware('is_admin')->only(['store', 'destroy']);    
     }
 
     /**
@@ -194,16 +195,14 @@ class PresensiController extends Controller
 
         try {
             $rules = $modelClass::getValidationRules('edit');
-            
-            $timezone = Config::get('app.timezone');
-
+        
             $validator = Validator::make($request->all(), $rules);
 
             if ($validator->fails()) {
                 throw new ValidationException($validator);
             }
 
-            $presensi = $modelClass::find($id);
+            $presensi = $modelClass::with('presensiSetting')->find($id);
 
             if (!$presensi) {
                 return response()->json([
@@ -212,11 +211,18 @@ class PresensiController extends Controller
                 ], 404);
             }
 
-            $presensi->update($request->all());
+            if ($presensi->userPresensi->id_user !== Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk mengubah data ini.',
+                ], 403);
+            }
+
+            $presensi->update($request->only('tugas'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data berhasil diperbarui.',
+                'message' => 'Data tugas berhasil diperbarui.',
                 'data' => $presensi,
             ]);
         } catch (ValidationException $e) {

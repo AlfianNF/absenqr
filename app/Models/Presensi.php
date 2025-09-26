@@ -14,12 +14,13 @@ class Presensi extends Model
         'id_setting' => 'required|exists:setting_presensis,id',
         'id_user' => 'required|exists:users,id',
         'jam_masuk' => 'nullable|date_format:H:i:s',
+        'tugas' => 'nullable|string',
         'status'=> 'nullable',
     ];
 
-    protected static $is_add = ['id_setting', 'id_user', 'jam_masuk','status'];
-    protected static $is_edit = ['jam_masuk','status'];
-    protected static $is_delete = ['id_setting', 'id_user', 'jam_masuk','status'];
+    protected static $is_add = ['id_setting', 'id_user', 'jam_masuk','status','tugas'];
+    protected static $is_edit = ['jam_masuk','status','tugas'];
+    protected static $is_delete = ['id_setting', 'id_user', 'jam_masuk','status','tugas'];
     protected static $is_filter = ['id_setting', 'id_user', 'jam_masuk','status'];
     protected static $is_search = ['id_setting', 'id_user', 'jam_masuk','status'];
 

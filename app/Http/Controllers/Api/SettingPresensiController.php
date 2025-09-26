@@ -245,7 +245,7 @@ class SettingPresensiController extends Controller
                 ], 404);
             }
 
-            // cari setting presensi untuk hari ini
+            // Cari setting presensi untuk hari ini
             $today = Carbon::now()->toDateString();
             $setting = SettingPresensi::where('hari', $today)->first();
 
@@ -257,32 +257,51 @@ class SettingPresensiController extends Controller
             }
 
             $now = Carbon::now();
+            $jamAbsenDeadline = Carbon::parse($setting->jam_absen);
 
-            // cek apakah sudah pernah presensi
+            
+            if ($now->lt($jamAbsenDeadline)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Belum waktunya untuk melakukan presensi. Presensi dimulai pada jam ' . $jamAbsenDeadline->format('H:i:s'),
+                ], 400);
+            }
+
             $presensi = Presensi::where('id_user', $user->id)
                 ->where('id_setting', $setting->id)
                 ->first();
 
-            if (!$presensi) {
-                // user absen
-                $status = $now->lte(Carbon::parse($setting->jam_absen))
-                    ? 'tepat waktu'
-                    : 'terlambat';
-
-                $presensi = Presensi::create([
-                    'id_user'   => $user->id,
-                    'id_setting'=> $setting->id,
-                    'jam_masuk' => $now->format('H:i:s'),
-                    'status'    => $status,
-                ]);
-
-                $message = "Absen masuk berhasil dicatat.";
+            if ($presensi) {
+                 return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah melakukan presensi hari ini.',
+                 ], 400);
             }
+
+            $tepatWaktuLimit = $jamAbsenDeadline->copy()->addMinutes(30);
+            $terlambatLimit = $jamAbsenDeadline->copy()->addHour();
+            
+            $status = ''; 
+
+            if ($now->lte($tepatWaktuLimit)) {
+                $status = 'tepat waktu';
+            } elseif ($now->lte($terlambatLimit)) {
+                $status = 'terlambat';
+            } else {
+                $status = '-';
+            }
+
+            $newPresensi = Presensi::create([
+                'id_user'   => $user->id,
+                'id_setting'=> $setting->id,
+                'jam_masuk' => $now->format('H:i:s'),
+                'status'    => $status,
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
-                'data' => $presensi,
+                'message' => "Absen masuk berhasil dicatat.",
+                'data' => $newPresensi,
             ], 201);
 
         } catch (\Exception $e) {
