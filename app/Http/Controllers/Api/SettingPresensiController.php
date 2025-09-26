@@ -88,23 +88,13 @@ class SettingPresensiController extends Controller
             $data = $request->all();
             $data['id_user'] = auth()->id();
 
+            $data['nama_ruangan'] = $request->input('nama_ruangan', 'USM TV');
+
             $setting = SettingPresensi::create($data);
-
-            $users = User::where('role', 'user')->get();
-
-            foreach ($users as $user) {
-                Presensi::create([
-                    'id_user' => $user->id,
-                    'id_setting' => $setting->id,
-                    'jam_masuk' => $data['jam_absen'],
-                    'jam_keluar' => null,
-                    'status' => 'alfa',
-                ]);
-            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Setting Presensi berhasil dibuat dan presensi default alfa telah diinput untuk user.',
+                'message' => 'Setting Presensi berhasil dibuat',
                 'data' => $setting,
             ], 201);
         } catch (ValidationException $e) {
@@ -274,7 +264,7 @@ class SettingPresensiController extends Controller
                 ->first();
 
             if (!$presensi) {
-                // absen masuk
+                // user absen
                 $status = $now->lte(Carbon::parse($setting->jam_absen))
                     ? 'tepat waktu'
                     : 'terlambat';
@@ -287,20 +277,6 @@ class SettingPresensiController extends Controller
                 ]);
 
                 $message = "Absen masuk berhasil dicatat.";
-            } else {
-                // absen pulang
-                if ($presensi->jam_keluar) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'User sudah absen pulang.',
-                    ], 400);
-                }
-
-                $presensi->update([
-                    'jam_keluar' => $now->format('H:i:s'),
-                ]);
-
-                $message = "Absen pulang berhasil dicatat.";
             }
 
             return response()->json([

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('id_user')->onDelete('cascade');
             $table->date('hari');  
             $table->time('jam_absen');  
-            $table->time('jam_pulang');  
+            $table->string('nama_ruangan')->default('USM TV');
             $table->timestamps();
 
             $table->foreign('id_user')->references('id')->on('users');

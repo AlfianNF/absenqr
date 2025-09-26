@@ -17,8 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('id_user')->onDelete('cascade');
             $table->unsignedBigInteger('id_setting')->onDelete('cascade');
             $table->time('jam_masuk');
-            $table->time('jam_keluar')->nullable();
-            $table->enum('status', ['tepat waktu','terlambat','alfa'])->default('alfa');
+            $table->enum('status', ['tepat waktu','terlambat','-'])->default('-');
             $table->timestamps();
 
             $table->foreign('id_user')->references('id')->on('users');

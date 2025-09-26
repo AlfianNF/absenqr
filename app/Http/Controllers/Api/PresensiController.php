@@ -71,71 +71,6 @@ class PresensiController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    // public function store(Request $request)
-    // {
-    //     $modelClass = Presensi::class;
-
-    //     try {
-    //         $rules = $modelClass::getValidationRules('add');
-    //         $validator = Validator::make($request->all(), $rules);
-
-    //         if ($validator->fails()) {
-    //             throw new ValidationException($validator);
-    //         }
-
-    //         $data = $request->all();
-
-    //         $timezone = Config::get('app.timezone');
-    //         $now = Carbon::now($timezone);
-
-    //         $settingPresensi = SettingPresensi::find($data['id_setting']);
-    //         if (!$settingPresensi) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Setting Presensi tidak ditemukan.',
-    //             ], 404);
-    //         }
-
-    //         $jamMasukSetting = Carbon::parse($settingPresensi->jam_absen, $timezone);
-    //         $data['jam_masuk'] = $now->format('H:i:s');
-
-    //         $diffInMinutes = abs($now->diffInMinutes($jamMasukSetting));
-
-    //         if ($diffInMinutes > 60) {
-    //             $data['status'] = 'terlambat';
-    //         } else {
-    //             $data['status'] = 'tepat waktu';
-    //         }
-
-    //         $presensi = $modelClass::create($data);
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Presensi berhasil dibuat.',
-    //             'data' => $presensi,
-    //         ], 201);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Validasi gagal.',
-    //             'errors' => $e->errors(),
-    //         ], 422);
-    //     } catch (QueryException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Terjadi kesalahan pada database.',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     } catch (Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Terjadi kesalahan server.',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
     public function store(Request $request,$id)
     {
         try {
@@ -168,7 +103,7 @@ class PresensiController extends Controller
             $isTelat = $now->greaterThan($jamAbsenSetting);
 
             if ($isTelat && $selisihMenit > 120) {
-                $status = 'alfa';
+                $status = '-';
             } elseif ($isTelat && $selisihMenit > 60) {
                 $status = 'terlambat';
             } else {
@@ -187,8 +122,6 @@ class PresensiController extends Controller
             if ($existingPresensi) {
                 $existingPresensi->update([
                     'jam_masuk' => $data['jam_masuk'],
-                    'latitude' => $data['latitude'],
-                    'longitude' => $data['longitude'],
                     'status' => $data['status'],
                 ]);
 
@@ -263,9 +196,6 @@ class PresensiController extends Controller
             $rules = $modelClass::getValidationRules('edit');
             
             $timezone = Config::get('app.timezone');
-            $request->merge([
-                'jam_keluar' => Carbon::now($timezone)->format('H:i:s')
-            ]);
 
             $validator = Validator::make($request->all(), $rules);
 
